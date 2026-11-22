@@ -17,8 +17,11 @@ Esta etapa responde a lo que pidió el profesor antes de construir los escenario
 |---|---|
 | `verificar_entorno.sh` | Revisa herramientas, Open vSwitch y módulos MPLS, y hace una prueba mínima de MPLS sin Mininet. |
 | `validar_mpls.py` | Monta la topología base en Mininet y ejecuta los pasos A, B y C con comprobaciones automáticas. |
-| `resultados/` | Se crea al correr: `etapa1_resumen.json` (PASA/FALLA de cada prueba) y `etapa1_bitacora.txt` (cada comando y su salida). |
-| `capturas/` | Se crea al correr: archivos `.pcap` para abrir en Wireshark. |
+| `evidencias.sh` | Resume cada `.pcap` con `tshark` (tipo de ICMP, destino y etiqueta) y muestra al lado lo que se espera ver. |
+| `verificacion_<nombre>.txt`, `validacion_<nombre>.txt` | Salida completa de los dos scripts en el equipo de cada integrante (se guardan con `tee`, secciones 2 y 4). |
+| `resultados/` | Se crea al correr: `etapa1_resumen.json` (PASA/FALLA de cada prueba), `etapa1_bitacora.txt` (cada comando y su salida) y `etapa1_evidencias.txt` (salida de `evidencias.sh`). |
+| `capturas/` | Se crea al correr: los 11 archivos `.pcap` para abrir en Wireshark. |
+| `figuras/` | Capturas de pantalla de Wireshark para el informe (sección 5). |
 
 ---
 
@@ -50,7 +53,7 @@ Dentro de Ubuntu:
 
 ```bash
 sudo apt update
-sudo apt install -y mininet openvswitch-switch iperf3 tcpdump ethtool iproute2 wireshark git
+sudo apt install -y mininet openvswitch-switch iperf3 tcpdump ethtool iproute2 wireshark tshark git
 sudo systemctl enable --now openvswitch-switch
 ```
 
@@ -70,8 +73,8 @@ sudo apt install -y linux-modules-extra-$(uname -r)
 ## 2. Verificar el entorno
 
 ```bash
-cd etapa1
-sudo bash verificar_entorno.sh
+cd stp-vs-mpls/etapa1        # la carpeta etapa1 del repositorio clonado
+sudo bash verificar_entorno.sh 2>&1 | tee verificacion_andres.txt    # Emilio: verificacion_emilio.txt
 ```
 
 El script revisa cinco cosas:
@@ -128,7 +131,7 @@ Los avisos (`[AVISO]`) no bloquean. Las fallas (`[FALLA]`) sí: revisen la secci
 2. **Camino de regreso.** Las respuestas de H2 hacia H1 (los ACK de TCP y los ICMP echo reply) vuelven por IP normal, siempre por R2. Por eso se desactiva el filtro de ruta inversa (`rp_filter=0`): la respuesta de `.12` entra a R1 por R2 aunque la ida salió por R3, y con el filtro estricto R1 la descartaría.
 3. **Capacidades.** Núcleo a 10 Mbps y accesos a 100 Mbps, para que los accesos nunca limiten la comparación (el profesor pidió más de 20 Mbps).
 4. **MTU del núcleo en 1600.** Cada etiqueta MPLS agrega 4 bytes. Con MTU 1600 en el núcleo, un paquete IP de 1500 bytes etiquetado cabe sin fragmentar. Es lo que se hace en redes MPLS reales.
-5. **Offloads desactivados** (`ethtool -K ... tso off gso off gro off`). Así cada paquete tiene su tamaño real en el cable y las capturas muestran checksums correctos.
+5. **Offloads desactivados** (`ethtool -K ... tx off tso off gso off gro off`). Sin TSO, GSO ni GRO cada paquete tiene su tamaño real en el cable, y con `tx off` el checksum se calcula antes de enviar, así que las capturas lo muestran correcto.
 6. **Parámetros MPLS por router.** `net.mpls.platform_labels=1000` en cada router y `net.mpls.conf.<interfaz>.input=1` solo en las interfaces que reciben paquetes etiquetados (r2-eth0, r3-eth0, r4-eth0 y r4-eth1). Estos valores son **por namespace de red**: como en Mininet cada router tiene el suyo, hay que ajustarlos dentro de cada router y no una sola vez en la VM.
 
 ---
@@ -136,7 +139,7 @@ Los avisos (`[AVISO]`) no bloquean. Las fallas (`[FALLA]`) sí: revisen la secci
 ## 4. Ejecutar la validación
 
 ```bash
-sudo python3 validar_mpls.py
+sudo python3 validar_mpls.py 2>&1 | tee validacion_andres.txt        # Emilio: validacion_emilio.txt
 ```
 
 Tarda menos de un minuto. Otras formas de correrlo:
@@ -158,8 +161,12 @@ Se cargan rutas estáticas para que todo vaya por R1 → R2 → R4, y H1 hace pi
 r1: ip route add 10.0.2.0/24 via 10.0.12.2
 r2: ip route add 10.0.1.0/24 via 10.0.12.1
 r2: ip route add 10.0.2.0/24 via 10.0.24.4
+r3: ip route add 10.0.1.0/24 via 10.0.13.1
+r3: ip route add 10.0.2.0/24 via 10.0.34.4
 r4: ip route add 10.0.1.0/24 via 10.0.24.2
 ```
+
+R3 también recibe sus rutas, pero en este paso R1 no le envía nada: por eso la captura en r3-eth0 no debe tener ningún ping.
 
 ### Paso B — Inserción, intercambio y eliminación de etiquetas (LSP-A)
 
@@ -208,7 +215,19 @@ El script termina con código 0 si todas pasan y 1 si alguna falla. El detalle d
 
 ## 5. Revisar las capturas en Wireshark
 
-Abran las capturas como usuario normal (los archivos quedan legibles):
+El script crea `resultados/` y `capturas/` como root. Antes de seguir, recuperen la propiedad de la carpeta; si no, `tee` y `git` fallan con «Permission denied»:
+
+```bash
+sudo chown -R $USER:$USER .
+```
+
+Luego revisen las 11 capturas de una vez, sin abrir Wireshark. En cada una, la línea «visto» debe coincidir con «esperado»:
+
+```bash
+bash evidencias.sh | tee resultados/etapa1_evidencias.txt
+```
+
+Después abran las capturas como usuario normal:
 
 ```bash
 wireshark capturas/C_r2-eth0.pcap &
@@ -216,6 +235,8 @@ wireshark capturas/C_r2-eth0.pcap &
 
 | Captura | Qué debe verse |
 |---|---|
+| `A_r2-eth0.pcap` / `A_r3-eth0.pcap` | Paso A: pings a .11 y .12 sin etiqueta en R2, y ninguno en R3. |
+| `B3_r2-eth0.pcap` / `B3_r2-eth1.pcap` / `B3_r4-eth2.pcap` | El mismo ping con etiqueta 100, luego 101, y sin etiqueta al salir de R4. |
 | `B2_r2-eth0_input0.pcap` | Paquetes con etiqueta 100 que llegan a R2 sin respuesta: R2 los descarta porque `input=0`. |
 | `C_r2-eth0.pcap` / `C_r2-eth1.pcap` | Pings hacia 10.0.2.11 con etiqueta 100 al entrar a R2 y 101 al salir. |
 | `C_r3-eth0.pcap` / `C_r3-eth1.pcap` | Pings hacia 10.0.2.12 con etiqueta 200 al entrar a R3 y 201 al salir. |
@@ -225,7 +246,7 @@ Filtros útiles: `mpls`, `mpls.label == 100`, `mpls && ip.dst == 10.0.2.12`. Al 
 
 En `C_r2-eth0.pcap` también aparecen paquetes **sin** etiqueta con origen .11 o .12: son las respuestas que vuelven por IP (decisión 2 de la sección 3).
 
-**Para el informe**, guarden capturas de pantalla de un mismo ping (mismo número de secuencia ICMP) visto en `C_r2-eth0` con etiqueta 100 y en `C_r2-eth1` con etiqueta 101, y lo mismo para R3 con 200 y 201. Con eso quedan demostrados el camino y las etiquetas de cada flujo.
+**Para el informe**, guarden capturas de pantalla de un mismo ping (mismo número de secuencia ICMP) visto en `C_r2-eth0` con etiqueta 100 y en `C_r2-eth1` con etiqueta 101, y lo mismo para R3 con 200 y 201. Con eso quedan demostrados el camino y las etiquetas de cada flujo. Guárdenlas en `figuras/` con el número de figura en el nombre, por ejemplo `fig3_push_r2-eth0.png`; el README principal del repositorio tiene la lista completa.
 
 ---
 
@@ -270,6 +291,8 @@ mininet> h1 ping -c 3 10.0.2.12               # vuelve a funcionar
 | C7/C8 con muy pocos Mbps | Offloads activos o un problema de MTU | `h1 ethtool -k h1-eth0 \| grep segmentation` y `r2 ip link` para ver la MTU. |
 | `Open vSwitch no responde` | El servicio no está activo | `sudo systemctl enable --now openvswitch-switch`. |
 | `tcpdump: ... Permission denied` | Restricción de tcpdump al escribir archivos | El script ya usa `-Z root`; comprueben que la carpeta no esté en un disco compartido con Windows. |
+| `Permission denied` con `tee`, `git add` o `git pull` | `resultados/` y `capturas/` quedaron a nombre de root | `sudo chown -R $USER:$USER .` dentro de `etapa1`. |
+| `Falta tshark` al correr `evidencias.sh` | No está instalado | `sudo apt install -y tshark`. |
 
 Si algo falla y no se arregla con esta tabla, guarden `resultados/etapa1_bitacora.txt` y la salida completa del script.
 
@@ -279,8 +302,9 @@ Si algo falla y no se arregla con esta tabla, guarden `resultados/etapa1_bitacor
 
 - [ ] `verificar_entorno.sh` termina con «todo listo».
 - [ ] `validar_mpls.py` termina con 17 de 17 pruebas.
-- [ ] Capturas de pantalla de Wireshark de los dos LSP (sección 5).
-- [ ] `etapa1_resumen.json`, la bitácora y los `.pcap` guardados en el repositorio.
+- [ ] `evidencias.sh`: en las 11 capturas «visto» coincide con «esperado».
+- [ ] Capturas de pantalla de Wireshark de los dos LSP en `figuras/` (sección 5).
+- [ ] En el repositorio: `resultados/`, `capturas/`, `figuras/` y las salidas `verificacion_*.txt` y `validacion_*.txt` de los dos.
 - [ ] Un párrafo en el borrador del informe con las decisiones de la sección 3.
 - [ ] **Ambos** corrieron el script y pueden explicar qué hace cada `sysctl` y cada ruta (lo pidió el profesor).
 

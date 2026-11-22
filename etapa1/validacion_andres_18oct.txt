@@ -1,0 +1,157 @@
+Etapa 1 - validacion de Mininet + MPLS | 2026-10-18 22:41:11
+  Ubuntu 24.04.5 LTS | kernel 7.0.0-38-generic | ip utility, iproute2-6.1.0, libbpf 1.3.0
+*** Error: Warning: sch_htb: quantum of class 50001 is big. Consider r2q change.
+*** Error: Warning: sch_htb: quantum of class 50001 is big. Consider r2q change.
+*** Error: Warning: sch_htb: quantum of class 50001 is big. Consider r2q change.
+*** Error: Warning: sch_htb: quantum of class 50001 is big. Consider r2q change.
+
+========================================================================
+Preparacion de los nodos
+========================================================================
+  MTU 1600 en las interfaces del nucleo
+  offloads desactivados y rp_filter=0 en todos los nodos
+  [h2] $ ip addr add 10.0.2.12/24 dev h2-eth0
+  [h2] $ ip -br addr show dev h2-eth0
+        h2-eth0@if4      UP             10.0.2.11/24 10.0.2.12/24 fe80::50bd:39ff:fe75:fe0f/64
+
+========================================================================
+Paso A - Un camino IP sin etiquetas: H1 -> R1 -> R2 -> R4 -> H2
+========================================================================
+  [r1] $ ip route add 10.0.2.0/24 via 10.0.12.2
+  [r2] $ ip route add 10.0.1.0/24 via 10.0.12.1
+  [r2] $ ip route add 10.0.2.0/24 via 10.0.24.4
+  [r3] $ ip route add 10.0.1.0/24 via 10.0.13.1
+  [r3] $ ip route add 10.0.2.0/24 via 10.0.34.4
+  [r4] $ ip route add 10.0.1.0/24 via 10.0.24.2
+  [r1] $ ip route get 10.0.2.11
+        10.0.2.11 via 10.0.12.2 dev r1-eth1 src 10.0.12.1 uid 0 
+            cache
+  [h1] ping 10.0.2.11 -> 0 % de perdida
+  [h1] ping 10.0.2.12 -> 0 % de perdida
+  captura A_r2-eth0.pcap          22 paquetes | etiquetas vistas: - | destinos IP: ['10.0.1.10', '10.0.2.11', '10.0.2.12']
+  captura A_r3-eth0.pcap          10 paquetes | etiquetas vistas: - | destinos IP: -
+  >> [PASA ] A1: H1 alcanza 10.0.2.11 por IP
+  >> [PASA ] A2: H1 alcanza 10.0.2.12 por IP
+  >> [PASA ] A3: El trafico va por R2 y no por R3
+
+========================================================================
+Paso B - Insercion, intercambio y eliminacion de etiquetas (LSP-A)
+========================================================================
+
+-- B1. Valores por defecto: platform_labels=0
+  [r2] $ sysctl net.mpls.platform_labels
+        net.mpls.platform_labels = 0
+  [r2] $ ip -f mpls route add 100 as 101 via inet 10.0.24.4 dev r2-eth1
+        Error: Label >= configured maximum in platform_labels.
+  [r2] $ ip -f mpls route show
+  >> [PASA ] B1: Con platform_labels=0 el kernel rechaza rutas de etiquetas
+
+-- B2. platform_labels=1000 en cada router (es un ajuste por namespace)
+  [r1] $ sysctl -w net.mpls.platform_labels=1000
+        net.mpls.platform_labels = 1000
+  [r2] $ sysctl -w net.mpls.platform_labels=1000
+        net.mpls.platform_labels = 1000
+  [r3] $ sysctl -w net.mpls.platform_labels=1000
+        net.mpls.platform_labels = 1000
+  [r4] $ sysctl -w net.mpls.platform_labels=1000
+        net.mpls.platform_labels = 1000
+  [r1] $ ip route add 10.0.2.11/32 encap mpls 100 via 10.0.12.2 dev r1-eth1
+  [r2] $ ip -f mpls route add 100 as 101 via inet 10.0.24.4 dev r2-eth1
+  [r4] $ ip -f mpls route add 101 via inet 10.0.2.11 dev r4-eth2
+  [r2] $ sysctl net.mpls.conf.r2-eth0.input
+        net.mpls.conf.r2-eth0.input = 0
+  [h1] ping 10.0.2.11 -> 100 % de perdida
+  captura B2_r2-eth0_input0.pcap   6 paquetes | etiquetas vistas: [100] | destinos IP: ['10.0.2.11']
+  >> [PASA ] B2: Con conf/<intf>/input=0, R2 recibe la etiqueta 100 y descarta el paquete
+
+-- B3. input=1 en las interfaces que reciben etiquetas del LSP-A
+  [r2] $ sysctl -w net.mpls.conf.r2-eth0.input=1
+        net.mpls.conf.r2-eth0.input = 1
+  [r4] $ sysctl -w net.mpls.conf.r4-eth0.input=1
+        net.mpls.conf.r4-eth0.input = 1
+  [r1] $ ip route show
+        10.0.1.0/24 dev r1-eth0 proto kernel scope link src 10.0.1.1 
+        10.0.2.0/24 via 10.0.12.2 dev r1-eth1 
+        10.0.2.11  encap mpls  100 via 10.0.12.2 dev r1-eth1 
+        10.0.12.0/24 dev r1-eth1 proto kernel scope link src 10.0.12.1 
+        10.0.13.0/24 dev r1-eth2 proto kernel scope link src 10.0.13.1
+  [r2] $ ip -f mpls route show
+        100 as to 101 via inet 10.0.24.4 dev r2-eth1
+  [r4] $ ip -f mpls route show
+        101 via inet 10.0.2.11 dev r4-eth2
+  [h1] ping 10.0.2.11 -> 0 % de perdida
+  captura B3_r2-eth0.pcap          6 paquetes | etiquetas vistas: [100] | destinos IP: ['10.0.1.10', '10.0.2.11']
+  captura B3_r2-eth1.pcap          6 paquetes | etiquetas vistas: [101] | destinos IP: ['10.0.1.10', '10.0.2.11']
+  captura B3_r4-eth2.pcap          6 paquetes | etiquetas vistas: - | destinos IP: ['10.0.1.10', '10.0.2.11']
+  >> [PASA ] B3: H1 alcanza 10.0.2.11 a traves del LSP-A
+  >> [PASA ] B4: Push en R1: llegan a R2 con etiqueta 100
+  >> [PASA ] B5: Swap en R2: salen hacia R4 con etiqueta 101
+  >> [PASA ] B6: Pop en R4: llegan a H2 como IP sin etiqueta
+
+========================================================================
+Paso C - Dos LSP: cada direccion de H2 por su propio camino
+========================================================================
+  Clasificacion en R1: 10.0.2.11 -> LSP-A (100/101, por R2) | 10.0.2.12 -> LSP-B (200/201, por R3)
+  [r1] $ ip route add 10.0.2.12/32 encap mpls 200 via 10.0.13.3 dev r1-eth2
+  [r3] $ ip -f mpls route add 200 as 201 via inet 10.0.34.4 dev r3-eth1
+  [r4] $ ip -f mpls route add 201 via inet 10.0.2.12 dev r4-eth2
+  [r3] $ sysctl -w net.mpls.conf.r3-eth0.input=1
+        net.mpls.conf.r3-eth0.input = 1
+  [r4] $ sysctl -w net.mpls.conf.r4-eth1.input=1
+        net.mpls.conf.r4-eth1.input = 1
+  [r1] $ ip route show
+        10.0.1.0/24 dev r1-eth0 proto kernel scope link src 10.0.1.1 
+        10.0.2.0/24 via 10.0.12.2 dev r1-eth1 
+        10.0.2.11  encap mpls  100 via 10.0.12.2 dev r1-eth1 
+        10.0.2.12  encap mpls  200 via 10.0.13.3 dev r1-eth2 
+        10.0.12.0/24 dev r1-eth1 proto kernel scope link src 10.0.12.1 
+        10.0.13.0/24 dev r1-eth2 proto kernel scope link src 10.0.13.1
+  [r3] $ ip -f mpls route show
+        200 as to 201 via inet 10.0.34.4 dev r3-eth1
+  [r4] $ ip -f mpls route show
+        101 via inet 10.0.2.11 dev r4-eth2 
+        201 via inet 10.0.2.12 dev r4-eth2
+  [h1] ping 10.0.2.11 -> 0 % de perdida
+  [h1] ping 10.0.2.12 -> 0 % de perdida
+  captura C_r2-eth0.pcap          11 paquetes | etiquetas vistas: [100] | destinos IP: ['10.0.1.10', '10.0.2.11']
+  captura C_r2-eth1.pcap           9 paquetes | etiquetas vistas: [101] | destinos IP: ['10.0.1.10', '10.0.2.11']
+  captura C_r3-eth0.pcap           6 paquetes | etiquetas vistas: [200] | destinos IP: ['10.0.2.12']
+  captura C_r3-eth1.pcap           6 paquetes | etiquetas vistas: [201] | destinos IP: ['10.0.2.12']
+  captura C_r4-eth2.pcap          12 paquetes | etiquetas vistas: - | destinos IP: ['10.0.1.10', '10.0.2.11', '10.0.2.12']
+  >> [PASA ] C1: H1 alcanza 10.0.2.11 (LSP-A)
+  >> [PASA ] C2: H1 alcanza 10.0.2.12 (LSP-B)
+  >> [PASA ] C3: LSP-A por R2: etiqueta 100 entra y 101 sale, hacia 10.0.2.11
+  >> [PASA ] C4: LSP-B por R3: etiqueta 200 entra y 201 sale, hacia 10.0.2.12
+  >> [PASA ] C5: Los flujos no se mezclan: nada etiquetado hacia 10.0.2.12 en R2 ni hacia 10.0.2.11 en R3
+  >> [PASA ] C6: R4 quita las etiquetas de ambos LSP
+
+-- C7. Prueba corta con iperf3 (TCP atraviesa cada LSP)
+  iperf3 h1 -> 10.0.2.11 (LSP-A): 9.34 Mbps recibidos
+  >> [PASA ] C7: TCP por el LSP-A alcanza al menos la mitad de 10 Mbps
+  iperf3 h1 -> 10.0.2.12 (LSP-B): 9.34 Mbps recibidos
+  >> [PASA ] C8: TCP por el LSP-B alcanza al menos la mitad de 10 Mbps
+
+========================================================================
+Resumen: 17 de 17 pruebas pasan
+========================================================================
+  PASA  A1   H1 alcanza 10.0.2.11 por IP
+  PASA  A2   H1 alcanza 10.0.2.12 por IP
+  PASA  A3   El trafico va por R2 y no por R3
+  PASA  B1   Con platform_labels=0 el kernel rechaza rutas de etiquetas
+  PASA  B2   Con conf/<intf>/input=0, R2 recibe la etiqueta 100 y descarta el paquete
+  PASA  B3   H1 alcanza 10.0.2.11 a traves del LSP-A
+  PASA  B4   Push en R1: llegan a R2 con etiqueta 100
+  PASA  B5   Swap en R2: salen hacia R4 con etiqueta 101
+  PASA  B6   Pop en R4: llegan a H2 como IP sin etiqueta
+  PASA  C1   H1 alcanza 10.0.2.11 (LSP-A)
+  PASA  C2   H1 alcanza 10.0.2.12 (LSP-B)
+  PASA  C3   LSP-A por R2: etiqueta 100 entra y 101 sale, hacia 10.0.2.11
+  PASA  C4   LSP-B por R3: etiqueta 200 entra y 201 sale, hacia 10.0.2.12
+  PASA  C5   Los flujos no se mezclan: nada etiquetado hacia 10.0.2.12 en R2 ni hacia 10.0.2.11 en R3
+  PASA  C6   R4 quita las etiquetas de ambos LSP
+  PASA  C7   TCP por el LSP-A alcanza al menos la mitad de 10 Mbps
+  PASA  C8   TCP por el LSP-B alcanza al menos la mitad de 10 Mbps
+
+Resumen: /home/alanchimba/etapa1/resultados/etapa1_resumen.json
+Bitacora: /home/alanchimba/etapa1/resultados/etapa1_bitacora.txt
+Capturas: /home/alanchimba/etapa1/capturas
