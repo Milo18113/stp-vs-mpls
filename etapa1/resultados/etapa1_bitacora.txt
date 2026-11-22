@@ -1,0 +1,818 @@
+Etapa 1 - validacion de Mininet + MPLS | 2026-11-21 22:46:21
+  Ubuntu 24.04.5 LTS | kernel 7.0.0-43-generic | ip utility, iproute2-6.1.0, libbpf 1.3.0
+
+========================================================================
+Preparacion de los nodos
+========================================================================
+[r1] $ ip link set dev r1-eth1 mtu 1600
+[r2] $ ip link set dev r2-eth0 mtu 1600
+[r1] $ ip link set dev r1-eth2 mtu 1600
+[r3] $ ip link set dev r3-eth0 mtu 1600
+[r2] $ ip link set dev r2-eth1 mtu 1600
+[r4] $ ip link set dev r4-eth0 mtu 1600
+[r3] $ ip link set dev r3-eth1 mtu 1600
+[r4] $ ip link set dev r4-eth1 mtu 1600
+  MTU 1600 en las interfaces del nucleo
+[h1] $ ethtool -K h1-eth0 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[h1] $ sysctl -qw net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0 net.ipv4.conf.h1-eth0.rp_filter=0
+[h2] $ ethtool -K h2-eth0 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[h2] $ sysctl -qw net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0 net.ipv4.conf.h2-eth0.rp_filter=0
+[r1] $ ethtool -K r1-eth0 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[r1] $ ethtool -K r1-eth1 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[r1] $ ethtool -K r1-eth2 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[r1] $ sysctl -qw net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0 net.ipv4.conf.r1-eth0.rp_filter=0 net.ipv4.conf.r1-eth1.rp_filter=0 net.ipv4.conf.r1-eth2.rp_filter=0
+[r2] $ ethtool -K r2-eth0 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[r2] $ ethtool -K r2-eth1 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[r2] $ sysctl -qw net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0 net.ipv4.conf.r2-eth0.rp_filter=0 net.ipv4.conf.r2-eth1.rp_filter=0
+[r3] $ ethtool -K r3-eth0 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[r3] $ ethtool -K r3-eth1 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[r3] $ sysctl -qw net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0 net.ipv4.conf.r3-eth0.rp_filter=0 net.ipv4.conf.r3-eth1.rp_filter=0
+[r4] $ ethtool -K r4-eth0 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[r4] $ ethtool -K r4-eth1 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[r4] $ ethtool -K r4-eth2 tx off tso off gso off gro off 2>/dev/null
+Actual changes:
+tx-checksum-ip-generic: off
+tx-generic-segmentation: off
+tx-tcp-segmentation: off
+tx-tcp-ecn-segmentation: off
+tx-tcp-mangleid-segmentation: off
+tx-tcp6-segmentation: off
+tx-udp-segmentation: off [not requested]
+tx-tcp-accecn-segmentation: off
+tx-checksum-sctp: off
+[r4] $ sysctl -qw net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0 net.ipv4.conf.r4-eth0.rp_filter=0 net.ipv4.conf.r4-eth1.rp_filter=0 net.ipv4.conf.r4-eth2.rp_filter=0
+  offloads desactivados y rp_filter=0 en todos los nodos
+[h2] $ ip addr add 10.0.2.12/24 dev h2-eth0
+[h2] $ ip -br addr show dev h2-eth0
+h2-eth0@if4      UP             10.0.2.11/24 10.0.2.12/24 fe80::94e7:3eff:fe5a:72dd/64 
+
+========================================================================
+Paso A - Un camino IP sin etiquetas: H1 -> R1 -> R2 -> R4 -> H2
+========================================================================
+[r1] $ ip route add 10.0.2.0/24 via 10.0.12.2
+[r2] $ ip route add 10.0.1.0/24 via 10.0.12.1
+[r2] $ ip route add 10.0.2.0/24 via 10.0.24.4
+[r3] $ ip route add 10.0.1.0/24 via 10.0.13.1
+[r3] $ ip route add 10.0.2.0/24 via 10.0.34.4
+[r4] $ ip route add 10.0.1.0/24 via 10.0.24.2
+[r1] $ ip route get 10.0.2.11
+10.0.2.11 via 10.0.12.2 dev r1-eth1 src 10.0.12.1 uid 0 
+    cache 
+[h1] $ ping -c 3 -i 0.2 -W 1 10.0.2.11
+PING 10.0.2.11 (10.0.2.11) 56(84) bytes of data.
+64 bytes from 10.0.2.11: icmp_seq=1 ttl=61 time=0.145 ms
+64 bytes from 10.0.2.11: icmp_seq=2 ttl=61 time=0.156 ms
+64 bytes from 10.0.2.11: icmp_seq=3 ttl=61 time=0.059 ms
+
+--- 10.0.2.11 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 410ms
+rtt min/avg/max/mdev = 0.059/0.120/0.156/0.043 ms
+  [h1] ping 10.0.2.11 -> 0 % de perdida
+[h1] $ ping -c 3 -i 0.2 -W 1 10.0.2.12
+PING 10.0.2.12 (10.0.2.12) 56(84) bytes of data.
+64 bytes from 10.0.2.12: icmp_seq=1 ttl=61 time=0.209 ms
+64 bytes from 10.0.2.12: icmp_seq=2 ttl=61 time=0.163 ms
+64 bytes from 10.0.2.12: icmp_seq=3 ttl=61 time=0.079 ms
+
+--- 10.0.2.12 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 412ms
+rtt min/avg/max/mdev = 0.079/0.150/0.209/0.053 ms
+  [h1] ping 10.0.2.12 -> 0 % de perdida
+  captura A_r2-eth0.pcap          22 paquetes | etiquetas vistas: - | destinos IP: ['10.0.1.10', '10.0.2.11', '10.0.2.12']
+  captura A_r3-eth0.pcap           9 paquetes | etiquetas vistas: - | destinos IP: -
+  >> [PASA ] A1: H1 alcanza 10.0.2.11 por IP
+  >> [PASA ] A2: H1 alcanza 10.0.2.12 por IP
+  >> [PASA ] A3: El trafico va por R2 y no por R3
+
+========================================================================
+Paso B - Insercion, intercambio y eliminacion de etiquetas (LSP-A)
+========================================================================
+
+-- B1. Valores por defecto: platform_labels=0
+[r2] $ sysctl net.mpls.platform_labels
+net.mpls.platform_labels = 0
+[r2] $ ip -f mpls route add 100 as 101 via inet 10.0.24.4 dev r2-eth1
+Error: Label >= configured maximum in platform_labels.
+[r2] $ ip -f mpls route show
+  >> [PASA ] B1: Con platform_labels=0 el kernel rechaza rutas de etiquetas
+
+-- B2. platform_labels=1000 en cada router (es un ajuste por namespace)
+[r1] $ sysctl -w net.mpls.platform_labels=1000
+net.mpls.platform_labels = 1000
+[r2] $ sysctl -w net.mpls.platform_labels=1000
+net.mpls.platform_labels = 1000
+[r3] $ sysctl -w net.mpls.platform_labels=1000
+net.mpls.platform_labels = 1000
+[r4] $ sysctl -w net.mpls.platform_labels=1000
+net.mpls.platform_labels = 1000
+[r1] $ ip route add 10.0.2.11/32 encap mpls 100 via 10.0.12.2 dev r1-eth1
+[r2] $ ip -f mpls route add 100 as 101 via inet 10.0.24.4 dev r2-eth1
+[r4] $ ip -f mpls route add 101 via inet 10.0.2.11 dev r4-eth2
+[r2] $ sysctl net.mpls.conf.r2-eth0.input
+net.mpls.conf.r2-eth0.input = 0
+[h1] $ ping -c 2 -i 0.2 -W 1 10.0.2.11
+PING 10.0.2.11 (10.0.2.11) 56(84) bytes of data.
+
+--- 10.0.2.11 ping statistics ---
+2 packets transmitted, 0 received, 100% packet loss, time 202ms
+
+  [h1] ping 10.0.2.11 -> 100 % de perdida
+  captura B2_r2-eth0_input0.pcap   6 paquetes | etiquetas vistas: [100] | destinos IP: ['10.0.2.11']
+  >> [PASA ] B2: Con conf/<intf>/input=0, R2 recibe la etiqueta 100 y descarta el paquete
+
+-- B3. input=1 en las interfaces que reciben etiquetas del LSP-A
+[r2] $ sysctl -w net.mpls.conf.r2-eth0.input=1
+net.mpls.conf.r2-eth0.input = 1
+[r4] $ sysctl -w net.mpls.conf.r4-eth0.input=1
+net.mpls.conf.r4-eth0.input = 1
+[r1] $ ip route show
+10.0.1.0/24 dev r1-eth0 proto kernel scope link src 10.0.1.1 
+10.0.2.0/24 via 10.0.12.2 dev r1-eth1 
+10.0.2.11  encap mpls  100 via 10.0.12.2 dev r1-eth1 
+10.0.12.0/24 dev r1-eth1 proto kernel scope link src 10.0.12.1 
+10.0.13.0/24 dev r1-eth2 proto kernel scope link src 10.0.13.1 
+[r2] $ ip -f mpls route show
+100 as to 101 via inet 10.0.24.4 dev r2-eth1 
+[r4] $ ip -f mpls route show
+101 via inet 10.0.2.11 dev r4-eth2 
+[h1] $ ping -c 3 -i 0.2 -W 1 10.0.2.11
+PING 10.0.2.11 (10.0.2.11) 56(84) bytes of data.
+64 bytes from 10.0.2.11: icmp_seq=1 ttl=61 time=0.254 ms
+64 bytes from 10.0.2.11: icmp_seq=2 ttl=61 time=0.107 ms
+64 bytes from 10.0.2.11: icmp_seq=3 ttl=61 time=0.247 ms
+
+--- 10.0.2.11 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 416ms
+rtt min/avg/max/mdev = 0.107/0.202/0.254/0.067 ms
+  [h1] ping 10.0.2.11 -> 0 % de perdida
+  captura B3_r2-eth0.pcap          6 paquetes | etiquetas vistas: [100] | destinos IP: ['10.0.1.10', '10.0.2.11']
+  captura B3_r2-eth1.pcap          6 paquetes | etiquetas vistas: [101] | destinos IP: ['10.0.1.10', '10.0.2.11']
+  captura B3_r4-eth2.pcap          6 paquetes | etiquetas vistas: - | destinos IP: ['10.0.1.10', '10.0.2.11']
+  >> [PASA ] B3: H1 alcanza 10.0.2.11 a traves del LSP-A
+  >> [PASA ] B4: Push en R1: llegan a R2 con etiqueta 100
+  >> [PASA ] B5: Swap en R2: salen hacia R4 con etiqueta 101
+  >> [PASA ] B6: Pop en R4: llegan a H2 como IP sin etiqueta
+
+========================================================================
+Paso C - Dos LSP: cada direccion de H2 por su propio camino
+========================================================================
+  Clasificacion en R1: 10.0.2.11 -> LSP-A (100/101, por R2) | 10.0.2.12 -> LSP-B (200/201, por R3)
+[r1] $ ip route add 10.0.2.12/32 encap mpls 200 via 10.0.13.3 dev r1-eth2
+[r3] $ ip -f mpls route add 200 as 201 via inet 10.0.34.4 dev r3-eth1
+[r4] $ ip -f mpls route add 201 via inet 10.0.2.12 dev r4-eth2
+[r3] $ sysctl -w net.mpls.conf.r3-eth0.input=1
+net.mpls.conf.r3-eth0.input = 1
+[r4] $ sysctl -w net.mpls.conf.r4-eth1.input=1
+net.mpls.conf.r4-eth1.input = 1
+[r1] $ ip route show
+10.0.1.0/24 dev r1-eth0 proto kernel scope link src 10.0.1.1 
+10.0.2.0/24 via 10.0.12.2 dev r1-eth1 
+10.0.2.11  encap mpls  100 via 10.0.12.2 dev r1-eth1 
+10.0.2.12  encap mpls  200 via 10.0.13.3 dev r1-eth2 
+10.0.12.0/24 dev r1-eth1 proto kernel scope link src 10.0.12.1 
+10.0.13.0/24 dev r1-eth2 proto kernel scope link src 10.0.13.1 
+[r3] $ ip -f mpls route show
+200 as to 201 via inet 10.0.34.4 dev r3-eth1 
+[r4] $ ip -f mpls route show
+101 via inet 10.0.2.11 dev r4-eth2 
+201 via inet 10.0.2.12 dev r4-eth2 
+[h1] $ ping -c 3 -i 0.2 -W 1 10.0.2.11
+PING 10.0.2.11 (10.0.2.11) 56(84) bytes of data.
+64 bytes from 10.0.2.11: icmp_seq=1 ttl=61 time=0.101 ms
+64 bytes from 10.0.2.11: icmp_seq=2 ttl=61 time=0.174 ms
+64 bytes from 10.0.2.11: icmp_seq=3 ttl=61 time=0.107 ms
+
+--- 10.0.2.11 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 412ms
+rtt min/avg/max/mdev = 0.101/0.127/0.174/0.033 ms
+  [h1] ping 10.0.2.11 -> 0 % de perdida
+[h1] $ ping -c 3 -i 0.2 -W 1 10.0.2.12
+PING 10.0.2.12 (10.0.2.12) 56(84) bytes of data.
+64 bytes from 10.0.2.12: icmp_seq=1 ttl=61 time=0.196 ms
+64 bytes from 10.0.2.12: icmp_seq=2 ttl=61 time=0.370 ms
+64 bytes from 10.0.2.12: icmp_seq=3 ttl=61 time=0.191 ms
+
+--- 10.0.2.12 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 412ms
+rtt min/avg/max/mdev = 0.191/0.252/0.370/0.083 ms
+  [h1] ping 10.0.2.12 -> 0 % de perdida
+  captura C_r2-eth0.pcap          10 paquetes | etiquetas vistas: [100] | destinos IP: ['10.0.1.10', '10.0.2.11']
+  captura C_r2-eth1.pcap          11 paquetes | etiquetas vistas: [101] | destinos IP: ['10.0.1.10', '10.0.2.11']
+  captura C_r3-eth0.pcap           5 paquetes | etiquetas vistas: [200] | destinos IP: ['10.0.2.12']
+  captura C_r3-eth1.pcap           7 paquetes | etiquetas vistas: [201] | destinos IP: ['10.0.2.12']
+  captura C_r4-eth2.pcap          13 paquetes | etiquetas vistas: - | destinos IP: ['10.0.1.10', '10.0.2.11', '10.0.2.12']
+  >> [PASA ] C1: H1 alcanza 10.0.2.11 (LSP-A)
+  >> [PASA ] C2: H1 alcanza 10.0.2.12 (LSP-B)
+  >> [PASA ] C3: LSP-A por R2: etiqueta 100 entra y 101 sale, hacia 10.0.2.11
+  >> [PASA ] C4: LSP-B por R3: etiqueta 200 entra y 201 sale, hacia 10.0.2.12
+  >> [PASA ] C5: Los flujos no se mezclan: nada etiquetado hacia 10.0.2.12 en R2 ni hacia 10.0.2.11 en R3
+  >> [PASA ] C6: R4 quita las etiquetas de ambos LSP
+
+-- C7. Prueba corta con iperf3 (TCP atraviesa cada LSP)
+[h1] $ iperf3 -c 10.0.2.11 -t 5 -J
+{
+	"start":	{
+		"connected":	[{
+				"socket":	5,
+				"local_host":	"10.0.1.10",
+				"local_port":	48502,
+				"remote_host":	"10.0.2.11",
+				"remote_port":	5201
+			}],
+		"version":	"iperf 3.16",
+		"system_info":	"Linux stp-vs-mpls-VirtualBox 7.0.0-43-generic #43~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Sat Oct 31 06:52:47 UTC 2 x86_64",
+		"timestamp":	{
+			"time":	"Sun, 22 Nov 2026 03:46:36 GMT",
+			"timesecs":	1795319196
+		},
+		"connecting_to":	{
+			"host":	"10.0.2.11",
+			"port":	5201
+		},
+		"cookie":	"cdllskodqbykjpdsfoi2wrebu5bblnhh7zef",
+		"tcp_mss_default":	1448,
+		"target_bitrate":	0,
+		"fq_rate":	0,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	87380,
+		"rcvbuf_actual":	87380,
+		"test_start":	{
+			"protocol":	"TCP",
+			"num_streams":	1,
+			"blksize":	131072,
+			"omit":	0,
+			"duration":	5,
+			"bytes":	0,
+			"blocks":	0,
+			"reverse":	0,
+			"tos":	0,
+			"target_bitrate":	0,
+			"bidir":	0,
+			"fqrate":	0
+		}
+	},
+	"intervals":	[{
+			"streams":	[{
+					"socket":	5,
+					"start":	0,
+					"end":	1.001063,
+					"seconds":	1.0010629892349243,
+					"bytes":	1572864,
+					"bits_per_second":	12569550.702914966,
+					"retransmits":	0,
+					"snd_cwnd":	88328,
+					"snd_wnd":	170496,
+					"rtt":	70362,
+					"rttvar":	868,
+					"pmtu":	1500,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	0,
+				"end":	1.001063,
+				"seconds":	1.0010629892349243,
+				"bytes":	1572864,
+				"bits_per_second":	12569550.702914966,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	1.001063,
+					"end":	2.000951,
+					"seconds":	0.999888002872467,
+					"bytes":	1441792,
+					"bits_per_second":	11535627.957195494,
+					"retransmits":	0,
+					"snd_cwnd":	147696,
+					"snd_wnd":	313856,
+					"rtt":	117429,
+					"rttvar":	567,
+					"pmtu":	1500,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	1.001063,
+				"end":	2.000951,
+				"seconds":	0.999888002872467,
+				"bytes":	1441792,
+				"bits_per_second":	11535627.957195494,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	2.000951,
+					"end":	3.001598,
+					"seconds":	1.0006469488143921,
+					"bytes":	1441792,
+					"bits_per_second":	11526878.699491723,
+					"retransmits":	0,
+					"snd_cwnd":	207064,
+					"snd_wnd":	420352,
+					"rtt":	165478,
+					"rttvar":	514,
+					"pmtu":	1500,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	2.000951,
+				"end":	3.001598,
+				"seconds":	1.0006469488143921,
+				"bytes":	1441792,
+				"bits_per_second":	11526878.699491723,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	3.001598,
+					"end":	4.002359,
+					"seconds":	1.0007610321044922,
+					"bytes":	1441792,
+					"bits_per_second":	11525564.675259726,
+					"retransmits":	0,
+					"snd_cwnd":	266432,
+					"snd_wnd":	539648,
+					"rtt":	213552,
+					"rttvar":	566,
+					"pmtu":	1500,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	3.001598,
+				"end":	4.002359,
+				"seconds":	1.0007610321044922,
+				"bytes":	1441792,
+				"bits_per_second":	11525564.675259726,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	4.002359,
+					"end":	5.001804,
+					"seconds":	0.99944502115249634,
+					"bytes":	1179648,
+					"bits_per_second":	9442424.34578106,
+					"retransmits":	0,
+					"snd_cwnd":	325800,
+					"snd_wnd":	640512,
+					"rtt":	278986,
+					"rttvar":	1152,
+					"pmtu":	1500,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	4.002359,
+				"end":	5.001804,
+				"seconds":	0.99944502115249634,
+				"bytes":	1179648,
+				"bits_per_second":	9442424.34578106,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}],
+	"end":	{
+		"streams":	[{
+				"sender":	{
+					"socket":	5,
+					"start":	0,
+					"end":	5.001804,
+					"seconds":	5.001804,
+					"bytes":	7077888,
+					"bits_per_second":	11320536.350484746,
+					"retransmits":	0,
+					"max_snd_cwnd":	325800,
+					"max_snd_wnd":	640512,
+					"max_rtt":	278986,
+					"min_rtt":	70362,
+					"mean_rtt":	169161,
+					"sender":	true
+				},
+				"receiver":	{
+					"socket":	5,
+					"start":	0,
+					"end":	5.276899,
+					"seconds":	5.001804,
+					"bytes":	6160384,
+					"bits_per_second":	9339400.28035405,
+					"sender":	true
+				}
+			}],
+		"sum_sent":	{
+			"start":	0,
+			"end":	5.001804,
+			"seconds":	5.001804,
+			"bytes":	7077888,
+			"bits_per_second":	11320536.350484746,
+			"retransmits":	0,
+			"sender":	true
+		},
+		"sum_received":	{
+			"start":	0,
+			"end":	5.276899,
+			"seconds":	5.276899,
+			"bytes":	6160384,
+			"bits_per_second":	9339400.28035405,
+			"sender":	true
+		},
+		"cpu_utilization_percent":	{
+			"host_total":	0.1677113230626554,
+			"host_user":	0.038754886833332,
+			"host_system":	0.12893644918093075,
+			"remote_total":	1.5655930720114068,
+			"remote_user":	0.16462273214988912,
+			"remote_system":	1.4010082408013471
+		},
+		"sender_tcp_congestion":	"cubic",
+		"receiver_tcp_congestion":	"cubic"
+	}
+}
+  iperf3 h1 -> 10.0.2.11 (LSP-A): 9.34 Mbps recibidos
+  >> [PASA ] C7: TCP por el LSP-A alcanza al menos la mitad de 10 Mbps
+[h1] $ iperf3 -c 10.0.2.12 -t 5 -J
+{
+	"start":	{
+		"connected":	[{
+				"socket":	5,
+				"local_host":	"10.0.1.10",
+				"local_port":	43340,
+				"remote_host":	"10.0.2.12",
+				"remote_port":	5201
+			}],
+		"version":	"iperf 3.16",
+		"system_info":	"Linux stp-vs-mpls-VirtualBox 7.0.0-43-generic #43~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Sat Oct 31 06:52:47 UTC 2 x86_64",
+		"timestamp":	{
+			"time":	"Sun, 22 Nov 2026 03:46:43 GMT",
+			"timesecs":	1795319203
+		},
+		"connecting_to":	{
+			"host":	"10.0.2.12",
+			"port":	5201
+		},
+		"cookie":	"5irzv25yxss6gobsm2z4zgdw4wq43kfkc6jq",
+		"tcp_mss_default":	1448,
+		"target_bitrate":	0,
+		"fq_rate":	0,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	87380,
+		"rcvbuf_actual":	87380,
+		"test_start":	{
+			"protocol":	"TCP",
+			"num_streams":	1,
+			"blksize":	131072,
+			"omit":	0,
+			"duration":	5,
+			"bytes":	0,
+			"blocks":	0,
+			"reverse":	0,
+			"tos":	0,
+			"target_bitrate":	0,
+			"bidir":	0,
+			"fqrate":	0
+		}
+	},
+	"intervals":	[{
+			"streams":	[{
+					"socket":	5,
+					"start":	0,
+					"end":	1.001525,
+					"seconds":	1.0015250444412231,
+					"bytes":	1572864,
+					"bits_per_second":	12563751.720278082,
+					"retransmits":	0,
+					"snd_cwnd":	88328,
+					"snd_wnd":	186368,
+					"rtt":	70198,
+					"rttvar":	745,
+					"pmtu":	1500,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	0,
+				"end":	1.001525,
+				"seconds":	1.0015250444412231,
+				"bytes":	1572864,
+				"bits_per_second":	12563751.720278082,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	1.001525,
+					"end":	2.00063,
+					"seconds":	0.99910497665405273,
+					"bytes":	1572864,
+					"bits_per_second":	12594184.088782618,
+					"retransmits":	0,
+					"snd_cwnd":	147696,
+					"snd_wnd":	308224,
+					"rtt":	118368,
+					"rttvar":	417,
+					"pmtu":	1500,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	1.001525,
+				"end":	2.00063,
+				"seconds":	0.99910497665405273,
+				"bytes":	1572864,
+				"bits_per_second":	12594184.088782618,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	2.00063,
+					"end":	3.000612,
+					"seconds":	0.99998199939727783,
+					"bytes":	1179648,
+					"bits_per_second":	9437353.87805791,
+					"retransmits":	0,
+					"snd_cwnd":	207064,
+					"snd_wnd":	433152,
+					"rtt":	165449,
+					"rttvar":	592,
+					"pmtu":	1500,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	2.00063,
+				"end":	3.000612,
+				"seconds":	0.99998199939727783,
+				"bytes":	1179648,
+				"bits_per_second":	9437353.87805791,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	3.000612,
+					"end":	4.000372,
+					"seconds":	0.9997599720954895,
+					"bytes":	1441792,
+					"bits_per_second":	11537105.2271918,
+					"retransmits":	0,
+					"snd_cwnd":	266432,
+					"snd_wnd":	524800,
+					"rtt":	212614,
+					"rttvar":	739,
+					"pmtu":	1500,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	3.000612,
+				"end":	4.000372,
+				"seconds":	0.9997599720954895,
+				"bytes":	1441792,
+				"bits_per_second":	11537105.2271918,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}, {
+			"streams":	[{
+					"socket":	5,
+					"start":	4.000372,
+					"end":	5.003668,
+					"seconds":	1.0032960176467896,
+					"bytes":	1703936,
+					"bits_per_second":	13586705.977336956,
+					"retransmits":	0,
+					"snd_cwnd":	327248,
+					"snd_wnd":	653312,
+					"rtt":	261008,
+					"rttvar":	1087,
+					"pmtu":	1500,
+					"omitted":	false,
+					"sender":	true
+				}],
+			"sum":	{
+				"start":	4.000372,
+				"end":	5.003668,
+				"seconds":	1.0032960176467896,
+				"bytes":	1703936,
+				"bits_per_second":	13586705.977336956,
+				"retransmits":	0,
+				"omitted":	false,
+				"sender":	true
+			}
+		}],
+	"end":	{
+		"streams":	[{
+				"sender":	{
+					"socket":	5,
+					"start":	0,
+					"end":	5.003668,
+					"seconds":	5.003668,
+					"bytes":	7471104,
+					"bits_per_second":	11945003.545399094,
+					"retransmits":	0,
+					"max_snd_cwnd":	327248,
+					"max_snd_wnd":	653312,
+					"max_rtt":	261008,
+					"min_rtt":	70198,
+					"mean_rtt":	165527,
+					"sender":	true
+				},
+				"receiver":	{
+					"socket":	5,
+					"start":	0,
+					"end":	5.277558,
+					"seconds":	5.003668,
+					"bytes":	6160384,
+					"bits_per_second":	9338234.08477936,
+					"sender":	true
+				}
+			}],
+		"sum_sent":	{
+			"start":	0,
+			"end":	5.003668,
+			"seconds":	5.003668,
+			"bytes":	7471104,
+			"bits_per_second":	11945003.545399094,
+			"retransmits":	0,
+			"sender":	true
+		},
+		"sum_received":	{
+			"start":	0,
+			"end":	5.277558,
+			"seconds":	5.277558,
+			"bytes":	6160384,
+			"bits_per_second":	9338234.08477936,
+			"sender":	true
+		},
+		"cpu_utilization_percent":	{
+			"host_total":	0.0669758371480122,
+			"host_user":	0.00621404694302858,
+			"host_system":	0.060761790204983623,
+			"remote_total":	1.6154324810008194,
+			"remote_user":	0.314859265468596,
+			"remote_system":	1.3005732155322234
+		},
+		"sender_tcp_congestion":	"cubic",
+		"receiver_tcp_congestion":	"cubic"
+	}
+}
+  iperf3 h1 -> 10.0.2.12 (LSP-B): 9.34 Mbps recibidos
+  >> [PASA ] C8: TCP por el LSP-B alcanza al menos la mitad de 10 Mbps
+
+========================================================================
+Resumen: 17 de 17 pruebas pasan
+========================================================================
+  PASA  A1   H1 alcanza 10.0.2.11 por IP
+  PASA  A2   H1 alcanza 10.0.2.12 por IP
+  PASA  A3   El trafico va por R2 y no por R3
+  PASA  B1   Con platform_labels=0 el kernel rechaza rutas de etiquetas
+  PASA  B2   Con conf/<intf>/input=0, R2 recibe la etiqueta 100 y descarta el paquete
+  PASA  B3   H1 alcanza 10.0.2.11 a traves del LSP-A
+  PASA  B4   Push en R1: llegan a R2 con etiqueta 100
+  PASA  B5   Swap en R2: salen hacia R4 con etiqueta 101
+  PASA  B6   Pop en R4: llegan a H2 como IP sin etiqueta
+  PASA  C1   H1 alcanza 10.0.2.11 (LSP-A)
+  PASA  C2   H1 alcanza 10.0.2.12 (LSP-B)
+  PASA  C3   LSP-A por R2: etiqueta 100 entra y 101 sale, hacia 10.0.2.11
+  PASA  C4   LSP-B por R3: etiqueta 200 entra y 201 sale, hacia 10.0.2.12
+  PASA  C5   Los flujos no se mezclan: nada etiquetado hacia 10.0.2.12 en R2 ni hacia 10.0.2.11 en R3
+  PASA  C6   R4 quita las etiquetas de ambos LSP
+  PASA  C7   TCP por el LSP-A alcanza al menos la mitad de 10 Mbps
+  PASA  C8   TCP por el LSP-B alcanza al menos la mitad de 10 Mbps
+
+Resumen: /home/stp-vs-mpls/stp-vs-mpls/etapa1/resultados/etapa1_resumen.json
+Bitacora: /home/stp-vs-mpls/stp-vs-mpls/etapa1/resultados/etapa1_bitacora.txt
+Capturas: /home/stp-vs-mpls/stp-vs-mpls/etapa1/capturas

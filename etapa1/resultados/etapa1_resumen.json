@@ -1,0 +1,153 @@
+{
+  "fecha": "2026-11-21T22:46:49",
+  "entorno": {
+    "distro": "Ubuntu 24.04.5 LTS",
+    "kernel": "7.0.0-43-generic",
+    "mininet": "2.3.0",
+    "iproute2": "ip utility, iproute2-6.1.0, libbpf 1.3.0",
+    "iperf3": "iperf 3.16 (cJSON 1.7.15)"
+  },
+  "hasta": "C",
+  "topologia": {
+    "bw_nucleo_mbps": 10,
+    "bw_acceso_mbps": 100,
+    "mtu_nucleo": 1600,
+    "h2_lsp_a": "10.0.2.11",
+    "h2_lsp_b": "10.0.2.12",
+    "lsp": {
+      "A": {
+        "push": 100,
+        "swap": 101,
+        "por": "r2"
+      },
+      "B": {
+        "push": 200,
+        "swap": 201,
+        "por": "r3"
+      }
+    }
+  },
+  "pruebas": [
+    {
+      "id": "A1",
+      "descripcion": "H1 alcanza 10.0.2.11 por IP",
+      "esperado": "0 % de perdida",
+      "resultado": "PASA",
+      "detalle": "PING 10.0.2.11 (10.0.2.11) 56(84) bytes of data.\r\n64 bytes from 10.0.2.11: icmp_seq=1 ttl=61 time=0.145 ms\r\n64 bytes from 10.0.2.11: icmp_seq=2 ttl=61 time=0.156 ms\r\n64 bytes from 10.0.2.11: icmp_seq=3 ttl=61 time=0.059 ms\r\n\r\n--- 10.0.2.11 ping statistics ---\r\n3 packets transmitted, 3 received, 0% packet loss, time 410ms\r\nrtt min/avg/max/mdev = 0.059/0.120/0.156/0.043 ms"
+    },
+    {
+      "id": "A2",
+      "descripcion": "H1 alcanza 10.0.2.12 por IP",
+      "esperado": "0 % de perdida",
+      "resultado": "PASA",
+      "detalle": "PING 10.0.2.12 (10.0.2.12) 56(84) bytes of data.\r\n64 bytes from 10.0.2.12: icmp_seq=1 ttl=61 time=0.209 ms\r\n64 bytes from 10.0.2.12: icmp_seq=2 ttl=61 time=0.163 ms\r\n64 bytes from 10.0.2.12: icmp_seq=3 ttl=61 time=0.079 ms\r\n\r\n--- 10.0.2.12 ping statistics ---\r\n3 packets transmitted, 3 received, 0% packet loss, time 412ms\r\nrtt min/avg/max/mdev = 0.079/0.150/0.209/0.053 ms"
+    },
+    {
+      "id": "A3",
+      "descripcion": "El trafico va por R2 y no por R3",
+      "esperado": "paquetes en r2-eth0, ninguno en r3-eth0",
+      "resultado": "PASA",
+      "detalle": "r2-eth0: 3, r3-eth0: 0"
+    },
+    {
+      "id": "B1",
+      "descripcion": "Con platform_labels=0 el kernel rechaza rutas de etiquetas",
+      "esperado": "error al crear la ruta",
+      "resultado": "PASA",
+      "detalle": "Error: Label >= configured maximum in platform_labels."
+    },
+    {
+      "id": "B2",
+      "descripcion": "Con conf/<intf>/input=0, R2 recibe la etiqueta 100 y descarta el paquete",
+      "esperado": "100 % de perdida y paquetes con etiqueta 100 en r2-eth0",
+      "resultado": "PASA",
+      "detalle": "perdida 100 %, paquetes con etiqueta 100: 2"
+    },
+    {
+      "id": "B3",
+      "descripcion": "H1 alcanza 10.0.2.11 a traves del LSP-A",
+      "esperado": "0 % de perdida",
+      "resultado": "PASA",
+      "detalle": "PING 10.0.2.11 (10.0.2.11) 56(84) bytes of data.\r\n64 bytes from 10.0.2.11: icmp_seq=1 ttl=61 time=0.254 ms\r\n64 bytes from 10.0.2.11: icmp_seq=2 ttl=61 time=0.107 ms\r\n64 bytes from 10.0.2.11: icmp_seq=3 ttl=61 time=0.247 ms\r\n\r\n--- 10.0.2.11 ping statistics ---\r\n3 packets transmitted, 3 received, 0% packet loss, time 416ms\r\nrtt min/avg/max/mdev = 0.107/0.202/0.254/0.067 ms"
+    },
+    {
+      "id": "B4",
+      "descripcion": "Push en R1: llegan a R2 con etiqueta 100",
+      "esperado": "paquetes con etiqueta 100",
+      "resultado": "PASA",
+      "detalle": "paquetes: 3"
+    },
+    {
+      "id": "B5",
+      "descripcion": "Swap en R2: salen hacia R4 con etiqueta 101",
+      "esperado": "paquetes con etiqueta 101",
+      "resultado": "PASA",
+      "detalle": "paquetes: 3"
+    },
+    {
+      "id": "B6",
+      "descripcion": "Pop en R4: llegan a H2 como IP sin etiqueta",
+      "esperado": "paquetes IP hacia 10.0.2.11 y ninguno con etiqueta",
+      "resultado": "PASA",
+      "detalle": "IP sin etiqueta: 3, con etiqueta: 0"
+    },
+    {
+      "id": "C1",
+      "descripcion": "H1 alcanza 10.0.2.11 (LSP-A)",
+      "esperado": "0 % de perdida",
+      "resultado": "PASA",
+      "detalle": "PING 10.0.2.11 (10.0.2.11) 56(84) bytes of data.\r\n64 bytes from 10.0.2.11: icmp_seq=1 ttl=61 time=0.101 ms\r\n64 bytes from 10.0.2.11: icmp_seq=2 ttl=61 time=0.174 ms\r\n64 bytes from 10.0.2.11: icmp_seq=3 ttl=61 time=0.107 ms\r\n\r\n--- 10.0.2.11 ping statistics ---\r\n3 packets transmitted, 3 received, 0% packet loss, time 412ms\r\nrtt min/avg/max/mdev = 0.101/0.127/0.174/0.033 ms"
+    },
+    {
+      "id": "C2",
+      "descripcion": "H1 alcanza 10.0.2.12 (LSP-B)",
+      "esperado": "0 % de perdida",
+      "resultado": "PASA",
+      "detalle": "PING 10.0.2.12 (10.0.2.12) 56(84) bytes of data.\r\n64 bytes from 10.0.2.12: icmp_seq=1 ttl=61 time=0.196 ms\r\n64 bytes from 10.0.2.12: icmp_seq=2 ttl=61 time=0.370 ms\r\n64 bytes from 10.0.2.12: icmp_seq=3 ttl=61 time=0.191 ms\r\n\r\n--- 10.0.2.12 ping statistics ---\r\n3 packets transmitted, 3 received, 0% packet loss, time 412ms\r\nrtt min/avg/max/mdev = 0.191/0.252/0.370/0.083 ms"
+    },
+    {
+      "id": "C3",
+      "descripcion": "LSP-A por R2: etiqueta 100 entra y 101 sale, hacia 10.0.2.11",
+      "esperado": "paquetes en ambas interfaces de R2",
+      "resultado": "PASA",
+      "detalle": "r2-eth0 (100): 3, r2-eth1 (101): 3"
+    },
+    {
+      "id": "C4",
+      "descripcion": "LSP-B por R3: etiqueta 200 entra y 201 sale, hacia 10.0.2.12",
+      "esperado": "paquetes en ambas interfaces de R3",
+      "resultado": "PASA",
+      "detalle": "r3-eth0 (200): 3, r3-eth1 (201): 3"
+    },
+    {
+      "id": "C5",
+      "descripcion": "Los flujos no se mezclan: nada etiquetado hacia 10.0.2.12 en R2 ni hacia 10.0.2.11 en R3",
+      "esperado": "0 paquetes cruzados",
+      "resultado": "PASA",
+      "detalle": "paquetes cruzados: 0"
+    },
+    {
+      "id": "C6",
+      "descripcion": "R4 quita las etiquetas de ambos LSP",
+      "esperado": "IP sin etiqueta hacia .11 y .12",
+      "resultado": "PASA",
+      "detalle": ".11: 3, .12: 3, con etiqueta: 0"
+    },
+    {
+      "id": "C7",
+      "descripcion": "TCP por el LSP-A alcanza al menos la mitad de 10 Mbps",
+      "esperado": "> 5.0 Mbps",
+      "resultado": "PASA",
+      "detalle": "9.34 Mbps"
+    },
+    {
+      "id": "C8",
+      "descripcion": "TCP por el LSP-B alcanza al menos la mitad de 10 Mbps",
+      "esperado": "> 5.0 Mbps",
+      "resultado": "PASA",
+      "detalle": "9.34 Mbps"
+    }
+  ],
+  "aprobadas": 17,
+  "total": 17
+}
