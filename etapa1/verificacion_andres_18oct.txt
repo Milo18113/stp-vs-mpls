@@ -1,0 +1,35 @@
+== 1. Sistema
+  [OK]    Ubuntu 24.04.5 LTS, kernel 7.0.0-38-generic, x86_64
+          virtualizacion: vmware
+== 2. Herramientas
+  [OK]    mn
+  [OK]    mnexec
+  [OK]    ip
+  [OK]    tcpdump
+  [OK]    iperf3
+  [OK]    ethtool
+  [OK]    ping
+  [OK]    python3
+  [OK]    sysctl
+  [OK]    modprobe
+  [OK]    python3 importa mininet (2.3.0)
+  [OK]    Wireshark/tshark
+== 3. Open vSwitch y Mininet (lo usara el escenario STP)
+  [OK]    Open vSwitch esta corriendo (ovs-vsctl (Open vSwitch) 3.3.9)
+  [OK]    Mininet: 'mn --test pingall' sin perdidas
+== 4. MPLS en el kernel
+  [OK]    modulo mpls_router cargado
+  [OK]    modulo mpls_iptunnel cargado
+  [OK]    modulo mpls_gso cargado
+  [OK]    /proc/sys/net/mpls existe
+          valor por defecto de net.mpls.platform_labels: 0
+          (0 = el kernel no reconoce ninguna etiqueta; hay que subirlo en cada router)
+  [OK]    iproute2 entiende rutas MPLS (ip utility, iproute2-6.1.0, libbpf 1.3.0)
+== 5. Prueba minima de MPLS con dos namespaces (sin Mininet)
+  [OK]    con platform_labels=0 el kernel rechaza la ruta de la etiqueta 50
+  [OK]    con net.mpls.conf.vB.input=0 los paquetes etiquetados se descartan
+  [OK]    push en A y pop en B funcionan: ping a 10.255.1.1 por la etiqueta 50
+          10.255.1.1  encap mpls  50 via 10.255.0.2 dev vA 
+          50 dev lo 
+
+Resultado: todo listo (0 aviso(s)). Sigan con: sudo python3 validar_mpls.py

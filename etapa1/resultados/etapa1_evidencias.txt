@@ -1,0 +1,52 @@
+== A_r2-eth0
+   esperado: Paso A, entrada de R2: pings a .11 y .12 y sus respuestas, todo sin etiqueta
+   visto:
+         6 echo reply    hacia 10.0.1.10  sin etiqueta
+         3 echo request  hacia 10.0.2.11  sin etiqueta
+         3 echo request  hacia 10.0.2.12  sin etiqueta
+== A_r3-eth0
+   esperado: Paso A, entrada de R3: ningun ping (todo va por R2)
+   visto:    ningun paquete ICMP
+== B2_r2-eth0_input0
+   esperado: Paso B2, input=0: requests con etiqueta 100 y ninguna respuesta
+   visto:
+         2 echo request  hacia 10.0.2.11  etiqueta 100
+== B3_r2-eth0
+   esperado: Push en R1: etiqueta 100 hacia .11; respuestas sin etiqueta
+   visto:
+         3 echo reply    hacia 10.0.1.10  sin etiqueta
+         3 echo request  hacia 10.0.2.11  etiqueta 100
+== B3_r2-eth1
+   esperado: Swap en R2: etiqueta 101 hacia .11; respuestas sin etiqueta
+   visto:
+         3 echo reply    hacia 10.0.1.10  sin etiqueta
+         3 echo request  hacia 10.0.2.11  etiqueta 101
+== B3_r4-eth2
+   esperado: Pop en R4: requests hacia .11 sin etiqueta; respuestas sin etiqueta
+   visto:
+         3 echo reply    hacia 10.0.1.10  sin etiqueta
+         3 echo request  hacia 10.0.2.11  sin etiqueta
+== C_r2-eth0
+   esperado: LSP-A: 100 hacia .11; nada etiquetado hacia .12; respuestas sin etiqueta
+   visto:
+         6 echo reply    hacia 10.0.1.10  sin etiqueta
+         3 echo request  hacia 10.0.2.11  etiqueta 100
+== C_r2-eth1
+   esperado: LSP-A: 101 hacia .11; nada etiquetado hacia .12; respuestas sin etiqueta
+   visto:
+         6 echo reply    hacia 10.0.1.10  sin etiqueta
+         3 echo request  hacia 10.0.2.11  etiqueta 101
+== C_r3-eth0
+   esperado: LSP-B: 200 hacia .12; nada hacia .11; ninguna respuesta (vuelven por R2)
+   visto:
+         3 echo request  hacia 10.0.2.12  etiqueta 200
+== C_r3-eth1
+   esperado: LSP-B: 201 hacia .12; nada hacia .11; ninguna respuesta (vuelven por R2)
+   visto:
+         3 echo request  hacia 10.0.2.12  etiqueta 201
+== C_r4-eth2
+   esperado: R4 hacia H2: requests a .11 y .12 sin etiqueta; respuestas sin etiqueta
+   visto:
+         6 echo reply    hacia 10.0.1.10  sin etiqueta
+         3 echo request  hacia 10.0.2.11  sin etiqueta
+         3 echo request  hacia 10.0.2.12  sin etiqueta
